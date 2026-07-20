@@ -1,0 +1,141 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --bg: #f6f7f4;
+  --panel: #fff;
+  --panel-soft: #eef0eb;
+  --text: #191c18;
+  --muted: #6f756d;
+  --border: #dfe2dc;
+  --accent: #e75c3e;
+  --accent-soft: #f9ded7;
+  --sidebar: #1c211d;
+  --sidebar-text: #eef1eb;
+  --shadow: 0 18px 60px rgba(31, 38, 31, 0.12);
+}
+.dark {
+  --bg: #111411;
+  --panel: #191d19;
+  --panel-soft: #232823;
+  --text: #f0f2ed;
+  --muted: #9ba29a;
+  --border: #303630;
+  --accent: #ff7658;
+  --accent-soft: #48291f;
+  --sidebar: #0c0f0c;
+  --sidebar-text: #e9ede6;
+  --shadow: 0 20px 70px rgba(0, 0, 0, 0.32);
+}
+* {
+  box-sizing: border-box;
+}
+html {
+  scroll-behavior: smooth;
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-inter), sans-serif;
+}
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+button {
+  cursor: pointer;
+}
+::selection {
+  background: var(--accent-soft);
+}
+.font-display {
+  font-family: var(--font-manrope), sans-serif;
+}
+.surface {
+  background: var(--panel);
+  border: 1px solid var(--border);
+}
+.muted {
+  color: var(--muted);
+}
+.focus-ring:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.mesh {
+  background-color: #171d18;
+}
+.prose-ai {
+  line-height: 1.75;
+  min-width: 0;
+}
+.prose-ai p {
+  margin: 0.35rem 0 1rem;
+}
+.prose-ai h1,
+.prose-ai h2,
+.prose-ai h3 {
+  font-family: var(--font-manrope);
+  font-weight: 700;
+  margin: 1.4rem 0 0.65rem;
+}
+.prose-ai ul,
+.prose-ai ol {
+  padding-left: 1.5rem;
+  margin: 0.65rem 0 1rem;
+}
+.prose-ai ul {
+  list-style: disc;
+}
+.prose-ai ol {
+  list-style: decimal;
+}
+.prose-ai table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  display: block;
+  overflow: auto;
+}
+.prose-ai th,
+.prose-ai td {
+  border: 1px solid var(--border);
+  padding: 0.55rem 0.7rem;
+  text-align: left;
+}
+.prose-ai pre {
+  background: #121612;
+  color: #edf2ea;
+  border-radius: 12px;
+  padding: 1rem;
+  overflow: auto;
+  margin: 1rem 0;
+}
+.prose-ai :not(pre) > code {
+  background: var(--panel-soft);
+  border-radius: 5px;
+  padding: 0.15rem 0.35rem;
+  font-size: 0.9em;
+}
+@keyframes caret {
+  50% {
+    opacity: 0;
+  }
+}
+.streaming-caret:after {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 1.1em;
+  margin-left: 4px;
+  vertical-align: -2px;
+  background: var(--accent);
+  animation: caret 0.8s infinite;
+}

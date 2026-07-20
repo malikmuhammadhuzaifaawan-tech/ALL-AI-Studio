@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Canvas AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" id="sidebar">
+        <div class="brand-row">
+          <div class="brand-mark">C</div>
+          <span>Canvas AI</span>
+          <button
+            class="icon-button mobile-only"
+            id="close-sidebar"
+            title="Close sidebar"
+          >
+            &#10005;
+          </button>
+        </div>
+        <button class="new-chat" id="new-chat">
+          <span>+</span> New conversation
+        </button>
+        <div class="history-label">Recent</div>
+        <nav class="history" id="history"></nav>
+        <div class="sidebar-footer">
+          <div class="status-dot"></div>
+          <div>
+            <strong>Private workspace</strong
+            ><small>Keys stay on your server</small>
+          </div>
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <button
+            class="icon-button mobile-only"
+            id="open-sidebar"
+            title="Open sidebar"
+          >
+            &#9776;
+          </button>
+          <div class="mode-switch" role="tablist">
+            <button class="mode active" data-mode="chat">Chat</button>
+            <button class="mode" data-mode="image">Image studio</button>
+          </div>
+          <div class="top-actions">
+            <button
+              class="icon-button"
+              id="settings-button"
+              title="Model settings"
+            >
+              &#9881;
+            </button>
+            <div class="avatar">MK</div>
+          </div>
+        </header>
+
+        <section class="chat-view" id="chat-view">
+          <div class="messages" id="messages">
+            <div class="welcome" id="welcome">
+              <div class="welcome-mark">C</div>
+              <h1>What will we create?</h1>
+              <p>
+                Your design partner for sharp ideas, thoughtful interfaces, and
+                production-ready creative direction.
+              </p>
+              <div class="suggestions">
+                <button
+                  data-prompt="Design a polished analytics dashboard for a small e-commerce brand. Include layout, components, colors, and mobile behavior."
+                >
+                  <span class="suggestion-icon coral">&#9638;</span
+                  ><b>Design a dashboard</b
+                  ><small>Plan a complete responsive interface</small>
+                </button>
+                <button
+                  data-prompt="Act as a brand designer. Create a visual identity direction for a modern sustainable coffee company."
+                >
+                  <span class="suggestion-icon blue">&#10022;</span
+                  ><b>Build a brand direction</b
+                  ><small>Define color, type, voice, and imagery</small>
+                </button>
+                <button
+                  data-prompt="Review my product page concept and give me a rigorous UX and visual design checklist."
+                >
+                  <span class="suggestion-icon green">&#10003;</span
+                  ><b>Review an experience</b
+                  ><small>Find gaps and sharpen the details</small>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="composer-wrap">
+            <div class="attachment-preview" id="attachment-preview"></div>
+            <form class="composer" id="chat-form">
+              <label class="attach-button" title="Attach image"
+                >+
+                <input type="file" id="image-upload" accept="image/*" hidden />
+              </label>
+              <textarea
+                id="message-input"
+                rows="1"
+                placeholder="Message Canvas AI"
+              ></textarea>
+              <button
+                class="send-button"
+                id="send-button"
+                type="submit"
+                title="Send"
+              >
+                &#8593;
+              </button>
+            </form>
+            <small class="disclaimer"
+              >AI can make mistakes. Review important design and implementation
+              decisions.</small
+            >
+          </div>
+        </section>
+
+        <section class="image-view hidden" id="image-view">
+          <div class="studio-layout">
+            <div class="studio-controls">
+              <span class="eyebrow">IMAGE STUDIO</span>
+              <h1>Turn direction into visuals.</h1>
+              <p>
+                Describe the subject, composition, lighting, palette, and
+                intended use.
+              </p>
+              <form id="image-form">
+                <label for="image-prompt">Creative direction</label>
+                <textarea
+                  id="image-prompt"
+                  rows="8"
+                  placeholder="A clean editorial product photograph of..."
+                  required
+                ></textarea>
+                <div class="field-grid">
+                  <label
+                    >Format<select id="image-size">
+                      <option value="1024x1024">Square</option>
+                      <option value="1536x1024">Landscape</option>
+                      <option value="1024x1536">Portrait</option>
+                    </select></label
+                  >
+                  <label
+                    >Quality<select id="image-quality">
+                      <option value="auto">Auto</option>
+                      <option value="high">High</option>
+                      <option value="medium">Medium</option>
+                      <option value="low">Low</option>
+                    </select></label
+                  >
+                </div>
+                <button
+                  class="primary-button"
+                  id="generate-button"
+                  type="submit"
+                >
+                  Generate image
+                </button>
+              </form>
+            </div>
+            <div class="image-stage" id="image-stage">
+              <div class="stage-empty">
+                <span>&#10022;</span><strong>Your image will appear here</strong
+                ><small
+                  >Use detailed art direction for the strongest result.</small
+                >
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div class="modal-backdrop hidden" id="settings-modal">
+      <section
+        class="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="settings-title"
+      >
+        <div class="modal-head">
+          <div>
+            <span class="eyebrow">CONFIGURATION</span>
+            <h2 id="settings-title">Model settings</h2>
+          </div>
+          <button class="icon-button" id="close-settings">&#10005;</button>
+        </div>
+        <label
+          >Provider<select id="provider">
+            <option value="openai">OpenAI</option>
+            <option value="compatible">OpenAI-compatible</option>
+          </select></label
+        >
+        <label
+          >API key<input
+            id="api-key"
+            type="password"
+            autocomplete="off"
+            placeholder="Enter a new key to configure"
+        /></label>
+        <label
+          >Base URL<input
+            id="base-url"
+            type="url"
+            placeholder="https://api.openai.com/v1"
+        /></label>
+        <label
+          >Chat model<input id="chat-model" placeholder="e.g. gpt-4.1-mini"
+        /></label>
+        <label
+          >Image model<input
+            id="image-model"
+            placeholder="e.g. gpt-image-1 (optional)"
+        /></label>
+        <label
+          >Creativity <output id="temperature-output">0.7</output
+          ><input
+            id="temperature"
+            type="range"
+            min="0"
+            max="2"
+            step="0.1"
+            value="0.7"
+        /></label>
+        <label
+          >Assistant instructions<textarea
+            id="system-prompt"
+            rows="5"
+            placeholder="Use the built-in expert designer instructions"
+          ></textarea>
+        </label>
+        <div class="provider-status" id="provider-status"></div>
+        <button class="primary-button" id="save-settings">
+          Test &amp; activate provider
+        </button>
+      </section>
+    </div>
+    <div class="toast" id="toast"></div>
+    <script src="/static/app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,16 @@
+node_modules
+.next
+.venv
+__pycache__
+.env
+data
+.mimocode
+.agents
+.git
+.github
+test-results
+playwright-report
+*.log
+prisma/*.db
+playwright-report
+test-results
