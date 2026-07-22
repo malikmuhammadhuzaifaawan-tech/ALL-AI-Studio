@@ -25,7 +25,7 @@ import { toast } from "sonner";
 import { API_URL } from "@/config/constants";
 import { api } from "@/services/api";
 import { normalizeAppConfig } from "@/lib/provider-config";
-import { useChatStore } from "@/store/chat-store";
+import { getSavedActiveId, useChatStore } from "@/store/chat-store";
 import {
   DEFAULT_TOOL_PERMISSIONS,
   loadToolPermissions,
@@ -95,7 +95,7 @@ function ThemedSelect({
 
   return (
     <Select.Root
-      value={value || undefined}
+      value={value}
       onValueChange={onValueChange}
       disabled={disabled}
     >
@@ -216,31 +216,29 @@ export function Workspace() {
   const normalizedConfig = useMemo(() => normalizeAppConfig(config), [config]);
   const activeProvider = normalizedConfig.active_provider;
   const activeConfig = normalizedConfig.providers[activeProvider];
+  const restoredChat = useRef(false);
   const { data: modelCatalog } = useQuery({
     queryKey: ["models", activeProvider],
     queryFn: () => api.models(activeProvider),
     enabled: Boolean(activeConfig?.configured),
   });
-  const modelOptions = useMemo(() => {
-    const available = modelCatalog?.models ?? [];
-    const models = available.length
-      ? available
-      : activeConfig?.chat_model
-        ? [activeConfig.chat_model]
-        : [];
-    return models.map((item) => ({ value: item, label: item, icon: Bot }));
-  }, [activeConfig, modelCatalog]);
+  const availableModels = modelCatalog?.models ?? [];
+  const models = availableModels.length
+    ? availableModels
+    : activeConfig?.chat_model
+      ? [activeConfig.chat_model]
+      : [];
+  const modelOptions = models.map((item) => ({
+    value: item,
+    label: item,
+    icon: Bot,
+  }));
   const { data: chats } = useQuery({ queryKey: ["chats"], queryFn: api.chats });
   const { data: activeChat, error: activeChatError } = useQuery({
     queryKey: ["chat", activeId],
     queryFn: () => api.chat(activeId!),
     enabled: Boolean(activeId),
   });
-  useEffect(() => {
-    // Every visit to the workspace starts like ChatGPT/Gemini: a fresh chat.
-    // A previous conversation is only opened after an explicit sidebar click.
-    resetChat();
-  }, [resetChat]);
   useEffect(() => {
     setToolPermissions(loadToolPermissions());
     const savedAgent = window.localStorage.getItem("ai-studio-agent");
@@ -270,6 +268,23 @@ export function Workspace() {
       );
     }
   }, [activeChatError]);
+  useEffect(() => {
+    if (!chats || restoredChat.current) return;
+    restoredChat.current = true;
+    const savedId = getSavedActiveId();
+    if (savedId === null) return;
+    const target =
+      savedId && chats.some((chat) => chat.id === savedId)
+        ? savedId
+        : savedId === undefined
+          ? chats[0]?.id
+          : undefined;
+    if (!target) {
+      if (savedId) resetChat();
+      return;
+    }
+    store.setActiveId(target);
+  }, [chats, resetChat, store]);
   useEffect(() => {
     const models = modelCatalog?.models ?? [];
     if (models.length && (!model || !models.includes(model)))
