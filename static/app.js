@@ -261,7 +261,7 @@ document.querySelectorAll(".mode").forEach(
 $("#image-upload").onchange = (e) => {
   const file = e.target.files[0];
   if (!file) return;
-  if (file.size > 8 * 1024 * 1024) return toast("Image must be under 8 MB");
+  if (file.size > 205 * 1024 * 1024) return toast("Image must be under 205 MB");
   const reader = new FileReader();
   reader.onload = () => {
     state.attachment = reader.result;

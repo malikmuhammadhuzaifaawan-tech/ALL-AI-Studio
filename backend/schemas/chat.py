@@ -1,6 +1,14 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from backend.core.providers import PROVIDER_IDS
+
+
+MAX_ATTACHMENT_SIZE = 205 * 1024 * 1024
+# Base64 needs four characters for every three bytes. Keep a small allowance
+# for the MIME type and the `data:*;base64,` URL prefix.
+MAX_ATTACHMENT_DATA_URL_LENGTH = 4 * ((MAX_ATTACHMENT_SIZE + 2) // 3) + 256
 
 
 def _supported_provider(provider: str) -> str:
@@ -12,8 +20,10 @@ def _supported_provider(provider: str) -> str:
 class Attachment(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     type: str = Field(min_length=1, max_length=255)
-    size: int = Field(ge=0, le=8 * 1024 * 1024)
-    data_url: str | None = Field(default=None, max_length=12 * 1024 * 1024)
+    size: int = Field(ge=0, le=MAX_ATTACHMENT_SIZE)
+    data_url: str | None = Field(
+        default=None, max_length=MAX_ATTACHMENT_DATA_URL_LENGTH
+    )
     text: str | None = Field(default=None, max_length=100_000)
 
 
@@ -23,10 +33,12 @@ class ChatRequest(BaseModel):
     provider: str = Field(default="openai", min_length=1, max_length=50)
     model: str | None = None
     system_prompt: str | None = None
+    agent: Literal["designer", "coder"] = "designer"
     temperature: float = Field(default=0.7, ge=0, le=2)
     image: str | None = None
     allow_browser_actions: bool = True
     allow_image_generation: bool = True
+    allow_workspace_tools: bool = False
     attachments: list[Attachment] = Field(default_factory=list, max_length=8)
 
     _validate_provider = field_validator("provider")(_supported_provider)

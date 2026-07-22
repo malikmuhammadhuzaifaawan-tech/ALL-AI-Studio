@@ -13,7 +13,10 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
-  experimental: { optimizePackageImports: ["lucide-react", "framer-motion"] },
+  experimental: {
+    optimizePackageImports: ["lucide-react", "framer-motion"],
+    proxyClientMaxBodySize: "280mb",
+  },
   async rewrites() {
     return [
       { source: "/api/:path*", destination: `${apiProxyTarget}/api/:path*` },

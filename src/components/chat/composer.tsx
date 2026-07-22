@@ -56,7 +56,7 @@ function speechRecognitionConstructor(): SpeechRecognitionConstructor | null {
 
 async function toAttachment(file: File): Promise<Attachment> {
   if (file.size > MAX_FILE_SIZE)
-    throw new Error(`${file.name} is larger than 8 MB`);
+    throw new Error(`${file.name} is larger than 205 MB`);
   const attachment: Attachment = {
     name: file.name,
     type: file.type || "text/plain",

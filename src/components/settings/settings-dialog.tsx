@@ -299,6 +299,13 @@ export function SettingsDialog({
             <div className="mt-3 space-y-2">
               {[
                 {
+                  key: "workspaceTools" as const,
+                  label: "Let Coder inspect and edit this project",
+                  detail:
+                    "Grants the Coder agent workspace-scoped read, list, search, and write tools. Secrets, databases, dependencies, generated folders, and paths outside this project stay blocked.",
+                  icon: HardDrive,
+                },
+                {
                   key: "browserActions" as const,
                   label: "Open requested web pages",
                   detail:

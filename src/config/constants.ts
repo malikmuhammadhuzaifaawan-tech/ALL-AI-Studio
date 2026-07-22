@@ -1,6 +1,6 @@
 // Browser requests stay on the Next.js origin and are proxied to FastAPI.
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
-export const MAX_FILE_SIZE = 8 * 1024 * 1024;
+export const MAX_FILE_SIZE = 205 * 1024 * 1024;
 export const ACCEPTED_FILE_TYPES = [
   "image/png",
   "image/jpeg",

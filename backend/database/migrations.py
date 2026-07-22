@@ -3,6 +3,7 @@ from backend.database.connection import connect
 
 def initialize_database() -> None:
     with connect() as connection:
+        connection.execute("PRAGMA journal_mode = WAL")
         connection.executescript(
             """
             CREATE TABLE IF NOT EXISTS conversations (

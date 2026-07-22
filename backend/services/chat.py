@@ -14,14 +14,14 @@ from backend.repositories.conversations import (
     add_user_message,
 )
 from backend.schemas.chat import Attachment, ChatRequest, ImageRequest
+from backend.services.agents import agent_prompt, parse_tool_call
 from backend.services.images import generate_and_store_image
 from backend.services.provider import client_for
 from backend.services.storage import hydrate_attachment, persist_attachments
+from backend.services.workspace_tools import execute_workspace_tool
 
-SYSTEM_PROMPT = """You are AI Studio, an expert product designer, visual director,
-UX strategist, software engineer, and practical creative partner. Give specific,
-production-ready guidance. Use concise markdown. Never claim
-that an image was generated unless an image tool actually returned one.
+SYSTEM_PROMPT = """Never claim that an image was generated unless an image tool
+actually returned one.
 
 Capabilities and limits: you can inspect the files included in the current
 message. The application can open a public HTTP(S) page in the user's browser
@@ -34,6 +34,8 @@ microphone, camera, or external accounts. Do not
 claim to have performed an action or accessed a resource unless a tool result
 in this conversation proves it. Ask the user to enable an explicit tool when
 an action requires one."""
+
+MAX_AGENT_STEPS = 8
 
 SITE_URLS = {
     "whatsapp": ("WhatsApp Web", "https://web.whatsapp.com/"),
@@ -170,7 +172,7 @@ async def stream_chat(request: ChatRequest) -> AsyncIterator[str]:
             assistant_saved = True
             yield _event({"type": "done"})
             return
-        if _is_image_request(request.message) and not request.allow_image_generation:
+        if request.agent == "designer" and _is_image_request(request.message) and not request.allow_image_generation:
             complete = (
                 "Image generation is disabled in **Settings → Tool permissions**. "
                 "Enable it and send this request again."
@@ -181,7 +183,7 @@ async def stream_chat(request: ChatRequest) -> AsyncIterator[str]:
             assistant_saved = True
             yield _event({"type": "done"})
             return
-        if _is_image_request(request.message):
+        if request.agent == "designer" and _is_image_request(request.message):
             result = await generate_and_store_image(
                 ImageRequest(prompt=request.message, provider=request.provider)
             )
@@ -197,9 +199,8 @@ async def stream_chat(request: ChatRequest) -> AsyncIterator[str]:
             yield _event({"type": "done"})
             return
         client, default_model, _ = client_for(request.provider)
-        messages: list[dict] = [
-            {"role": "system", "content": request.system_prompt or SYSTEM_PROMPT}
-        ]
+        prompt = f"{agent_prompt(request.agent, request.system_prompt)}\n\n{SYSTEM_PROMPT}"
+        messages: list[dict] = [{"role": "system", "content": prompt}]
         for index, row in enumerate(history):
             content: str | list[dict] = row["content"]
             stored_attachments = [
@@ -216,6 +217,52 @@ async def stream_chat(request: ChatRequest) -> AsyncIterator[str]:
             messages.append({"role": row["role"], "content": content})
 
         yield _event({"type": "meta", "conversation_id": conversation_id})
+        if request.agent == "coder":
+            if not request.allow_workspace_tools:
+                messages[0]["content"] += (
+                    "\n\nWorkspace tools are disabled. Explain that the user must enable "
+                    "Coder workspace access before asking you to inspect or edit files."
+                )
+            else:
+                read_paths: set[str] = set()
+                for step in range(MAX_AGENT_STEPS):
+                    response = await client.chat.completions.create(
+                        model=request.model or default_model,
+                        messages=messages,
+                        temperature=request.temperature,
+                        stream=False,
+                    )
+                    candidate = response.choices[0].message.content or ""
+                    tool_call = parse_tool_call(candidate)
+                    if not tool_call:
+                        complete = candidate
+                        if complete:
+                            yield _event({"type": "delta", "content": complete})
+                        add_assistant_message(conversation_id, complete)
+                        assistant_saved = True
+                        yield _event({"type": "done"})
+                        return
+                    name, arguments = tool_call
+                    path = str(arguments.get("path", ".")).replace("\\", "/")
+                    if name == "write_file" and arguments.get("overwrite") and path not in read_paths:
+                        raise HTTPException(400, "Coder must read an existing file before overwriting it")
+                    public_arguments = {
+                        key: (f"<{len(value)} characters>" if key == "content" and isinstance(value, str) else value)
+                        for key, value in arguments.items()
+                    }
+                    yield _event({"type": "tool_start", "tool": name, "arguments": public_arguments, "step": step + 1})
+                    result = execute_workspace_tool(name, arguments)
+                    if name == "read_file":
+                        read_paths.add(path)
+                    yield _event({"type": "tool_result", "tool": name, "result": {key: value for key, value in result.items() if key != "content"}, "step": step + 1})
+                    messages.extend(
+                        [
+                            {"role": "assistant", "content": candidate},
+                            {"role": "user", "content": f"Tool result for {name}:\n{json.dumps(result, ensure_ascii=False)}"},
+                        ]
+                    )
+                raise HTTPException(429, f"Coder reached the {MAX_AGENT_STEPS}-step tool limit")
+
         response = await client.chat.completions.create(
             model=request.model or default_model,
             messages=messages,

@@ -3,6 +3,7 @@ export interface ToolPermissions {
   fileAttachments: boolean;
   imageGeneration: boolean;
   microphone: boolean;
+  workspaceTools: boolean;
 }
 
 export const DEFAULT_TOOL_PERMISSIONS: ToolPermissions = {
@@ -10,6 +11,7 @@ export const DEFAULT_TOOL_PERMISSIONS: ToolPermissions = {
   fileAttachments: true,
   imageGeneration: true,
   microphone: true,
+  workspaceTools: false,
 };
 
 const STORAGE_KEY = "ai-studio-tool-permissions";

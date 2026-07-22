@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowRight, Braces, LockKeyhole, Sparkles, Zap } from "lucide-react";
 
 const features = [
@@ -79,44 +80,40 @@ export default function LandingPage() {
               </a>
             </div>
           </div>
-          <div className="relative hidden lg:block">
-            <div className="absolute -inset-6 rounded-[36px] border border-white/10" />
-            <div className="relative overflow-hidden rounded-[28px] border border-white/15 bg-[#121612] shadow-2xl">
-              <div className="flex items-center gap-2 border-b border-white/10 px-5 py-4">
-                <i className="size-2.5 rounded-full bg-[#e75c3e]" />
-                <i className="size-2.5 rounded-full bg-[#e7b73e]" />
-                <i className="size-2.5 rounded-full bg-[#56b987]" />
-                <span className="ml-auto text-xs text-white/35">
-                  AI Studio - private session
-                </span>
-              </div>
-              <div className="grid min-h-[380px] grid-cols-[150px_1fr]">
-                <div className="border-r border-white/10 p-4">
-                  <div className="mb-5 h-9 rounded-lg bg-white/8" />
-                  {[68, 82, 55, 74].map((w) => (
-                    <div
-                      key={w}
-                      className="mb-3 h-2 rounded bg-white/8"
-                      style={{ width: `${w}%` }}
-                    />
-                  ))}
+          <div className="relative mx-auto w-full max-w-[480px] lg:mx-0">
+            <div className="absolute -inset-5 rounded-[40px] border border-white/10 bg-white/[.02]" />
+            <div className="relative overflow-hidden rounded-[30px] border border-white/15 bg-[#121612] p-2 shadow-2xl shadow-black/40 sm:p-3">
+              <div className="relative aspect-[880/1205] max-h-[560px] overflow-hidden rounded-[23px]">
+                <Image
+                  src="/fiverr.jpeg"
+                  alt="AI Studio creative workspace"
+                  fill
+                  priority
+                  className="object-cover object-[center_24%] transition duration-700 hover:scale-105"
+                  sizes="(max-width: 1024px) 90vw, 480px"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#101610]/90 via-[#101610]/10 to-transparent" />
+                <div className="absolute top-4 right-4 left-4 flex items-center justify-between rounded-2xl border border-white/15 bg-black/20 px-4 py-3 text-xs text-white/75 backdrop-blur-md">
+                  <span className="flex items-center gap-2 font-semibold">
+                    <i className="size-2 rounded-full bg-[#56b987]" /> Private
+                    session
+                  </span>
+                  <Sparkles className="size-4 text-[#ff876e]" />
                 </div>
-                <div className="flex flex-col justify-between p-7">
-                  <div>
-                    <p className="text-xs text-white/35">ASSISTANT</p>
-                    <h3 className="font-display mt-3 text-2xl font-bold">
-                      How can I help you create today?
-                    </h3>
-                    <p className="mt-4 max-w-sm text-sm leading-6 text-white/50">
-                      Connect your preferred model and turn ideas into polished,
-                      production-ready work.
-                    </p>
-                  </div>
-                  <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-white/35">
-                    Ask anything...{" "}
-                    <span className="float-right grid size-7 place-items-center rounded-lg bg-[#e75c3e] text-white">
-                      Go
+                <div className="absolute right-5 bottom-5 left-5 text-white sm:right-7 sm:bottom-7 sm:left-7">
+                  <p className="mb-2 text-[10px] font-bold tracking-[.2em] text-white/65 uppercase">
+                    Your creative co-pilot
+                  </p>
+                  <h3 className="font-display text-3xl leading-tight font-bold sm:text-4xl">
+                    Ideas in.
+                    <br />
+                    Brilliant work out.
+                  </h3>
+                  <div className="mt-5 flex items-center gap-2 text-xs text-white/65">
+                    <span className="rounded-full bg-[#e75c3e] px-3 py-1.5 font-bold text-white">
+                      Ready when you are
                     </span>
+                    <span>→</span>
                   </div>
                 </div>
               </div>

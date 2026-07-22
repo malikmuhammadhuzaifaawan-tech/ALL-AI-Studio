@@ -24,3 +24,6 @@ data/generated/
 data/attachments/
 
 /src/generated/prisma
+
+.playwright-mcp/
+.pytest-tmp/

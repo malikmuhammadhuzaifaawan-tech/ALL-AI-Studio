@@ -60,7 +60,10 @@ def persist_attachments(attachments: list[Attachment]) -> list[dict]:
 def migrate_inline_attachments() -> int:
     migrated = 0
     with connect() as connection:
-        rows = connection.execute("SELECT id, attachments_json FROM messages").fetchall()
+        rows = connection.execute(
+            """SELECT id, attachments_json FROM messages
+               WHERE attachments_json LIKE '%\"data_url\"%'"""
+        ).fetchall()
         for row in rows:
             items = json.loads(row["attachments_json"] or "[]")
             if not any(item.get("data_url") for item in items):

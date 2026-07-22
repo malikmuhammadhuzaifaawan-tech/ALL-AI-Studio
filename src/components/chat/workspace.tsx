@@ -1,14 +1,19 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import * as Select from "@radix-ui/react-select";
 import {
+  Bot,
   Check,
+  ChevronDown,
+  Code2,
   Copy,
   Download,
   FileText,
   ImageIcon,
   Loader2,
   MoreHorizontal,
+  Palette,
   RefreshCw,
   Share2,
   Sparkles,
@@ -20,7 +25,7 @@ import { toast } from "sonner";
 import { API_URL } from "@/config/constants";
 import { api } from "@/services/api";
 import { normalizeAppConfig } from "@/lib/provider-config";
-import { getSavedActiveId, useChatStore } from "@/store/chat-store";
+import { useChatStore } from "@/store/chat-store";
 import {
   DEFAULT_TOOL_PERMISSIONS,
   loadToolPermissions,
@@ -52,6 +57,88 @@ const suggestions = [
 ];
 const browserActionPattern =
   /\b(open|launch|visit|khol|kholo|kholen|kro|karo)\b/i;
+
+type AgentMode = "designer" | "coder";
+type ToolActivity = {
+  tool: string;
+  detail: string;
+  step: number;
+  done: boolean;
+};
+
+const AGENT_OPTIONS = [
+  { value: "designer", label: "Designer", icon: Palette },
+  { value: "coder", label: "Coder", icon: Code2 },
+] as const;
+
+function ThemedSelect({
+  label,
+  value,
+  options,
+  onValueChange,
+  disabled = false,
+  className,
+}: {
+  label: string;
+  value: string;
+  options: readonly {
+    value: string;
+    label: string;
+    icon?: typeof Bot;
+  }[];
+  onValueChange: (value: string) => void;
+  disabled?: boolean;
+  className: string;
+}) {
+  const selected = options.find((option) => option.value === value);
+  const SelectedIcon = selected?.icon ?? Bot;
+
+  return (
+    <Select.Root
+      value={value || undefined}
+      onValueChange={onValueChange}
+      disabled={disabled}
+    >
+      <Select.Trigger
+        aria-label={label}
+        className={`focus-ring flex h-9 min-w-0 items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-2.5 text-sm font-semibold text-[var(--text)] shadow-sm outline-none hover:bg-[var(--panel-soft)] disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+      >
+        <SelectedIcon className="size-4 shrink-0 text-[var(--accent)]" />
+        <Select.Value placeholder="Configure a model" className="truncate" />
+        <Select.Icon className="ml-auto shrink-0 text-[var(--muted)]">
+          <ChevronDown className="size-3.5" />
+        </Select.Icon>
+      </Select.Trigger>
+      <Select.Portal>
+        <Select.Content
+          position="popper"
+          sideOffset={6}
+          collisionPadding={12}
+          className="z-50 max-h-80 min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--panel)] text-[var(--text)] shadow-[var(--shadow)]"
+        >
+          <Select.Viewport className="scrollbar max-h-72 p-1.5">
+            {options.map((option) => {
+              const OptionIcon = option.icon ?? Bot;
+              return (
+                <Select.Item
+                  key={option.value}
+                  value={option.value}
+                  className="focus-ring relative flex cursor-pointer items-center gap-2 rounded-md py-2 pr-8 pl-2.5 text-xs font-semibold outline-none hover:bg-[var(--panel-soft)] focus:bg-[var(--panel-soft)] data-[state=checked]:bg-[var(--accent-soft)]"
+                >
+                  <OptionIcon className="size-4 shrink-0 text-[var(--accent)]" />
+                  <Select.ItemText>{option.label}</Select.ItemText>
+                  <Select.ItemIndicator className="absolute right-2.5 text-[var(--accent)]">
+                    <Check className="size-3.5" />
+                  </Select.ItemIndicator>
+                </Select.Item>
+              );
+            })}
+          </Select.Viewport>
+        </Select.Content>
+      </Select.Portal>
+    </Select.Root>
+  );
+}
 
 function MessageAttachments({ files }: { files: StoredAttachment[] }) {
   if (!files.length) return null;
@@ -105,17 +192,21 @@ export function Workspace() {
   const setChats = useChatStore((state) => state.setChats);
   const setMessages = useChatStore((state) => state.setMessages);
   const activeId = useChatStore((state) => state.activeId);
-  const restoredChat = useRef(false);
   const [controller, setController] = useState<AbortController | null>(null);
   const [model, setModel] = useState("");
+  const [agent, setAgent] = useState<AgentMode>("designer");
+  const [toolActivity, setToolActivity] = useState<ToolActivity[]>([]);
   const [copied, setCopied] = useState<string | null>(null);
   const [imageOpen, setImageOpen] = useState(false);
   const [imagePrompt, setImagePrompt] = useState("");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageLoading, setImageLoading] = useState(false);
+  const [heroImageReady, setHeroImageReady] = useState(true);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [toolPermissions, setToolPermissions] = useState<ToolPermissions>(
     DEFAULT_TOOL_PERMISSIONS,
   );
+  const resetChat = useChatStore((state) => state.reset);
   const bottom = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
   const { data: config } = useQuery({
@@ -125,6 +216,20 @@ export function Workspace() {
   const normalizedConfig = useMemo(() => normalizeAppConfig(config), [config]);
   const activeProvider = normalizedConfig.active_provider;
   const activeConfig = normalizedConfig.providers[activeProvider];
+  const { data: modelCatalog } = useQuery({
+    queryKey: ["models", activeProvider],
+    queryFn: () => api.models(activeProvider),
+    enabled: Boolean(activeConfig?.configured),
+  });
+  const modelOptions = useMemo(() => {
+    const available = modelCatalog?.models ?? [];
+    const models = available.length
+      ? available
+      : activeConfig?.chat_model
+        ? [activeConfig.chat_model]
+        : [];
+    return models.map((item) => ({ value: item, label: item, icon: Bot }));
+  }, [activeConfig, modelCatalog]);
   const { data: chats } = useQuery({ queryKey: ["chats"], queryFn: api.chats });
   const { data: activeChat, error: activeChatError } = useQuery({
     queryKey: ["chat", activeId],
@@ -132,7 +237,15 @@ export function Workspace() {
     enabled: Boolean(activeId),
   });
   useEffect(() => {
+    // Every visit to the workspace starts like ChatGPT/Gemini: a fresh chat.
+    // A previous conversation is only opened after an explicit sidebar click.
+    resetChat();
+  }, [resetChat]);
+  useEffect(() => {
     setToolPermissions(loadToolPermissions());
+    const savedAgent = window.localStorage.getItem("ai-studio-agent");
+    if (savedAgent === "designer" || savedAgent === "coder")
+      setAgent(savedAgent);
     const update = (event: Event) =>
       setToolPermissions(
         (event as CustomEvent<ToolPermissions>).detail ?? loadToolPermissions(),
@@ -158,25 +271,12 @@ export function Workspace() {
     }
   }, [activeChatError]);
   useEffect(() => {
-    if (!chats || restoredChat.current) return;
-    restoredChat.current = true;
-    const savedId = getSavedActiveId();
-    if (savedId === null) return;
-    const target =
-      savedId && chats.some((chat) => chat.id === savedId)
-        ? savedId
-        : savedId === undefined
-          ? chats[0]?.id
-          : undefined;
-    if (!target) {
-      if (savedId) store.reset();
-      return;
-    }
-    store.setActiveId(target);
-  }, [chats, store]);
-  useEffect(() => {
-    if (activeConfig?.chat_model && !model) setModel(activeConfig.chat_model);
-  }, [activeConfig, model]);
+    const models = modelCatalog?.models ?? [];
+    if (models.length && (!model || !models.includes(model)))
+      setModel(models[0] ?? "");
+    else if (!models.length && activeConfig?.chat_model && !model)
+      setModel(activeConfig.chat_model);
+  }, [activeConfig, model, modelCatalog]);
   useEffect(() => {
     bottom.current?.scrollIntoView({ behavior: "smooth" });
   }, [store.messages]);
@@ -207,6 +307,7 @@ export function Workspace() {
       store.appendMessage({ role: "assistant", content: "" });
       store.setAttachments([]);
       let full = "";
+      setToolActivity([]);
       let conversationId = store.activeId;
       try {
         const response = await fetch(`${API_URL}/api/chat`, {
@@ -218,8 +319,10 @@ export function Workspace() {
             message: content,
             provider: activeProvider,
             model: model || null,
+            agent,
             allow_browser_actions: toolPermissions.browserActions,
             allow_image_generation: toolPermissions.imageGeneration,
+            allow_workspace_tools: toolPermissions.workspaceTools,
             attachments,
           }),
         });
@@ -249,6 +352,10 @@ export function Workspace() {
               message?: string;
               url?: string;
               label?: string;
+              tool?: string;
+              step?: number;
+              arguments?: Record<string, unknown>;
+              result?: Record<string, unknown>;
             };
             try {
               item = JSON.parse(payload) as typeof item;
@@ -278,6 +385,30 @@ export function Workspace() {
               full += item.content ?? "";
               store.updateLastAssistant(full);
             }
+            if (item.type === "tool_start" && item.tool) {
+              const detail =
+                typeof item.arguments?.path === "string"
+                  ? item.arguments.path
+                  : item.tool.replace("_", " ");
+              setToolActivity((current) => [
+                ...current,
+                {
+                  tool: item.tool!,
+                  detail,
+                  step: item.step ?? current.length + 1,
+                  done: false,
+                },
+              ]);
+            }
+            if (item.type === "tool_result" && item.tool) {
+              setToolActivity((current) =>
+                current.map((activity) =>
+                  activity.tool === item.tool && !activity.done
+                    ? { ...activity, done: true }
+                    : activity,
+                ),
+              );
+            }
             if (item.type === "error") throw new Error(item.message);
           }
         }
@@ -305,7 +436,7 @@ export function Workspace() {
         setController(null);
       }
     },
-    [activeProvider, model, queryClient, store, toolPermissions],
+    [activeProvider, agent, model, queryClient, store, toolPermissions],
   );
   async function generateImage() {
     if (!toolPermissions.imageGeneration) {
@@ -351,16 +482,30 @@ export function Workspace() {
       <Sidebar />
       <main className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-16 shrink-0 items-center border-b border-[var(--border)] px-4 pl-16 md:pl-5">
-          <select
-            aria-label="Model"
-            value={model}
-            onChange={(e) => setModel(e.target.value)}
-            className="max-w-56 rounded-lg bg-transparent px-2 py-1.5 text-sm font-semibold outline-none"
-          >
-            <option value={activeConfig?.chat_model ?? ""}>
-              {activeConfig?.chat_model || "Configure a model"}
-            </option>
-          </select>
+          <div className="flex min-w-0 items-center gap-2">
+            <ThemedSelect
+              label="AI agent"
+              value={agent}
+              options={AGENT_OPTIONS}
+              onValueChange={(next) => {
+                const supported = AGENT_OPTIONS.find(
+                  (option) => option.value === next,
+                );
+                if (!supported) return;
+                setAgent(supported.value);
+                window.localStorage.setItem("ai-studio-agent", supported.value);
+              }}
+              className="w-32 sm:w-40"
+            />
+            <ThemedSelect
+              label="AI model"
+              value={model}
+              options={modelOptions}
+              onValueChange={setModel}
+              disabled={!modelOptions.length}
+              className="w-36 sm:w-56"
+            />
+          </div>
           {activeConfig?.configured ? (
             <span className="ml-2 hidden items-center gap-1.5 rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-bold text-emerald-700 sm:flex">
               <i className="size-1.5 rounded-full bg-emerald-500" />
@@ -392,37 +537,98 @@ export function Workspace() {
               <Download className="size-4" />
             </button>
             <button
-              onClick={() =>
-                navigator.clipboard
-                  .writeText(location.href)
-                  .then(() => toast.success("Link copied"))
-              }
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(location.href);
+                  toast.success("Workspace link copied");
+                } catch {
+                  toast.error("Could not copy the workspace link");
+                }
+              }}
               title="Share"
               className="muted rounded-lg p-2 hover:bg-[var(--panel-soft)]"
             >
               <Share2 className="size-4" />
             </button>
-            <button
-              title="More options"
-              className="muted rounded-lg p-2 hover:bg-[var(--panel-soft)]"
-            >
-              <MoreHorizontal className="size-4" />
-            </button>
+            <div className="relative">
+              <button
+                title="More options"
+                aria-label="More options"
+                aria-expanded={moreOpen}
+                onClick={() => setMoreOpen((open) => !open)}
+                className="muted rounded-lg p-2 hover:bg-[var(--panel-soft)]"
+              >
+                <MoreHorizontal className="size-4" />
+              </button>
+              {moreOpen && (
+                <div className="surface absolute top-11 right-0 z-20 w-48 rounded-xl p-1.5 shadow-xl">
+                  <button
+                    onClick={() => {
+                      exportChat();
+                      setMoreOpen(false);
+                    }}
+                    className="flex w-full items-center rounded-lg px-3 py-2 text-left text-xs font-semibold hover:bg-[var(--panel-soft)]"
+                  >
+                    Download conversation
+                  </button>
+                  <button
+                    onClick={() => {
+                      store.reset();
+                      setMoreOpen(false);
+                      toast.success("Started a fresh conversation");
+                    }}
+                    className="flex w-full items-center rounded-lg px-3 py-2 text-left text-xs font-semibold hover:bg-[var(--panel-soft)]"
+                  >
+                    Start fresh conversation
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </header>
         <section className="scrollbar flex-1 overflow-y-auto">
           <div className="mx-auto min-h-full max-w-3xl px-4 py-8 sm:px-6">
             {store.messages.length === 0 ? (
-              <div className="flex min-h-[70vh] flex-col justify-center">
-                <div className="mb-6 grid size-12 place-items-center rounded-2xl bg-[var(--accent)] text-white shadow-lg">
+              <div className="flex min-h-[70vh] flex-col justify-center py-8">
+                <div className="surface relative mb-8 overflow-hidden rounded-[2rem] p-2 shadow-xl sm:p-3">
+                  <div className="relative h-56 overflow-hidden rounded-[1.5rem] bg-gradient-to-br from-[#17251e] via-[#2d5141] to-[var(--accent)] sm:h-72">
+                    {heroImageReady && (
+                      <Image
+                        src="/fiverr.jpeg"
+                        alt="Your AI Studio workspace"
+                        fill
+                        priority
+                        unoptimized
+                        className="object-cover object-[center_28%] transition duration-700 hover:scale-105"
+                        onError={() => setHeroImageReady(false)}
+                      />
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent" />
+                    <div className="absolute right-5 bottom-5 left-5 flex items-end justify-between gap-3 text-white sm:right-7 sm:bottom-7 sm:left-7">
+                      <div>
+                        <p className="mb-1 flex items-center gap-1.5 text-[10px] font-bold tracking-[.2em] text-white/70 uppercase">
+                          <Sparkles className="size-3" /> AI Studio
+                        </p>
+                        <h2 className="font-display text-2xl font-bold sm:text-3xl">
+                          Build something brilliant.
+                        </h2>
+                      </div>
+                      <span className="hidden rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[10px] font-bold backdrop-blur sm:block">
+                        Your creative workspace
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div className="mb-6 grid size-12 place-items-center rounded-2xl bg-[var(--accent)] text-white shadow-[var(--accent)]/25 shadow-lg">
                   <Sparkles className="size-5" />
                 </div>
-                <h1 className="font-display text-3xl font-bold sm:text-4xl">
+                <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
                   What are we working on?
                 </h1>
                 <p className="muted mt-3 max-w-xl leading-7">
-                  Ask a question, attach a file, review an idea, or build
-                  something ambitious with your preferred model.
+                  {agent === "coder"
+                    ? "Inspect, debug, and implement within this project using your preferred model. Workspace access requires explicit permission."
+                    : "Ask a question, attach a file, review an idea, or design something ambitious with your preferred model."}
                 </p>
                 <div className="mt-9 grid gap-3 sm:grid-cols-2">
                   {suggestions.map((item) => (
@@ -514,6 +720,28 @@ export function Workspace() {
             )}
           </div>
         </section>
+        {store.generating && toolActivity.length > 0 && (
+          <div
+            className="mx-auto mb-2 w-full max-w-3xl px-4 sm:px-6"
+            aria-live="polite"
+          >
+            <div className="flex flex-wrap gap-2 rounded-xl border border-[var(--border)] bg-[var(--panel-soft)] p-2">
+              {toolActivity.map((activity) => (
+                <span
+                  key={`${activity.step}-${activity.tool}`}
+                  className="flex items-center gap-1.5 rounded-lg bg-[var(--panel)] px-2 py-1 text-[10px] font-semibold"
+                >
+                  {activity.done ? (
+                    <Check className="size-3 text-emerald-600" />
+                  ) : (
+                    <Loader2 className="size-3 animate-spin" />
+                  )}
+                  {activity.tool.replace("_", " ")} · {activity.detail}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
         <Composer
           onSend={send}
           onStop={() => controller?.abort()}
